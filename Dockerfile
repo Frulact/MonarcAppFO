@@ -105,6 +105,9 @@ RUN mkdir -p /var/www/html/monarc/data/cache \
     /var/www/html/monarc/data/DoctrineORMModule/Proxy \
     /var/www/html/monarc/data/import/files
 
+# Copy application source code
+COPY . /var/www/html/monarc
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
