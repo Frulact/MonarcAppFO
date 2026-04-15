@@ -80,6 +80,8 @@ services:
       STATS_API_KEY: ${STATS_API_KEY}
       APP_ENV: production
       APP_DIR: /var/www/html/monarc
+    volumes:
+      - app_data:/var/www/html/monarc/data
     depends_on:
       fodb:
         condition: service_healthy
@@ -94,3 +96,4 @@ volumes:
   db_data:
   postgres_data:
   stats_data:
+  app_data:

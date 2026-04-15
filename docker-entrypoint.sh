@@ -25,7 +25,7 @@ is_true() {
 }
 
 # Check if this is the first run
-if [ ! -f "/var/www/html/monarc/.docker-initialized" ]; then
+if [ ! -f "/var/www/html/monarc/data/.docker-initialized" ]; then
     echo -e "${GREEN}First run detected, initializing application...${NC}"
 
     cd /var/www/html/monarc
@@ -166,8 +166,12 @@ EOF
     ./scripts/update-all.sh
 
     # Seed database with initial user
-    echo -e "${YELLOW}Creating initial user and client...${NC}"
-    php ./vendor/robmorgan/phinx/bin/phinx seed:run -c ./module/Monarc/FrontOffice/migrations/phinx.php
+    if is_true "${SKIP_SEED:-0}"; then
+        echo -e "${YELLOW}Skipping database seeding (SKIP_SEED is set)...${NC}"
+    else
+        echo -e "${YELLOW}Creating initial user and client...${NC}"
+        php ./vendor/robmorgan/phinx/bin/phinx seed:run -c ./module/Monarc/FrontOffice/migrations/phinx.php
+    fi
 
     # Set permissions
     echo -e "${YELLOW}Setting permissions...${NC}"
@@ -175,7 +179,7 @@ EOF
     chmod -R 775 /var/www/html/monarc/data
 
     # Mark initialization as complete
-    touch /var/www/html/monarc/.docker-initialized
+    touch /var/www/html/monarc/data/.docker-initialized
     echo -e "${GREEN}Initialization complete!${NC}"
 else
     echo -e "${GREEN}Application already initialized, starting services...${NC}"
