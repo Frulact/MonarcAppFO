@@ -158,30 +158,48 @@ if [ "$USE_BO_COMMON_ENABLED" -eq 1 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Pre-migration fixups: the legacy bootstrap dump (db-bootstrap/*.sql) was
-# committed with quirks that some later migrations don't tolerate. These
-# ALTERs are idempotent — if the offending object isn't present, the error
-# is swallowed and we move on.
+# Migrations.
+#
+# Core migration `20230901112005 FixPositionsCleanupDb` assumes a single
+# composite index named `anr_id` on rolf_tags/rolf_risks, with no leftover
+# duplicates. When monarc_common is built by running the migration chain
+# from scratch (i.e. the bootstrap dump wasn't loaded, e.g. because
+# monarc_cli existed when monarcfoapp first started), the earlier
+# `20161024140431 AddIndex` migration adds a *second* `(anr_id, code)`
+# unique index that Phinx auto-names `anr_id_3` (because `anr_id` and
+# `anr_id_2` already exist). The 2023 migration then drops `anr_id` and the
+# anr_id column, but the leftover composite `anr_id_3` blocks DROP COLUMN
+# with MariaDB error 1072.
+#
+# To avoid this, run Phinx in two stages: everything up to the last
+# Core migration before 20230901112005, then pre-clean the duplicates,
+# then the remainder. Once the 2023 migration is recorded in phinxlog
+# the cleanup becomes a no-op (DROP INDEX errors are swallowed).
 # ---------------------------------------------------------------------------
+
+CORE_PHINX=./module/Monarc/Core/migrations/phinx.php
+FO_PHINX=./module/Monarc/FrontOffice/migrations/phinx.php
+
+echo -e "${YELLOW}Running Core migrations (stage 1, up to 20230110110655)...${NC}"
+php ./vendor/robmorgan/phinx/bin/phinx migrate -c "$CORE_PHINX" --target 20230110110655
 
 if [ "$USE_BO_COMMON_ENABLED" -eq 0 ]; then
-    echo -e "${YELLOW}Pre-migration fixups on ${DBNAME_COMMON}...${NC}"
-    # Duplicate anr_id FK on rolf_tags / rolf_risks confuses migration
-    # 20230901112005 FixPositionsCleanupDb (MariaDB error 1072 at line 302).
-    mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
-        -e "ALTER TABLE rolf_tags DROP FOREIGN KEY rolf_tags_ibfk_2;" 2>/dev/null || true
-    mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
-        -e "ALTER TABLE rolf_risks DROP FOREIGN KEY rolf_risks_ibfk_2;" 2>/dev/null || true
+    echo -e "${YELLOW}Pre-cleanup before 20230901112005 on ${DBNAME_COMMON}...${NC}"
+    for tbl in rolf_tags rolf_risks; do
+        for idx in anr_id_3 anr_id_4; do
+            mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
+                -e "ALTER TABLE ${tbl} DROP INDEX ${idx};" 2>/dev/null || true
+        done
+        mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
+            -e "ALTER TABLE ${tbl} DROP FOREIGN KEY ${tbl}_ibfk_2;" 2>/dev/null || true
+    done
 fi
 
-# ---------------------------------------------------------------------------
-# Migrations: Phinx is idempotent, so run every start to pick up new schema
-# shipped in this image.
-# ---------------------------------------------------------------------------
+echo -e "${YELLOW}Running Core migrations (stage 2)...${NC}"
+php ./vendor/robmorgan/phinx/bin/phinx migrate -c "$CORE_PHINX"
 
-echo -e "${YELLOW}Running database migrations...${NC}"
-php ./vendor/robmorgan/phinx/bin/phinx migrate -c ./module/Monarc/Core/migrations/phinx.php
-php ./vendor/robmorgan/phinx/bin/phinx migrate -c ./module/Monarc/FrontOffice/migrations/phinx.php
+echo -e "${YELLOW}Running FrontOffice migrations...${NC}"
+php ./vendor/robmorgan/phinx/bin/phinx migrate -c "$FO_PHINX"
 
 # ---------------------------------------------------------------------------
 # Seed: once per data volume. Honor the legacy .docker-initialized flag so
