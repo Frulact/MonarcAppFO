@@ -183,17 +183,21 @@ FO_PHINX=./module/Monarc/FrontOffice/migrations/phinx.php
 echo -e "${YELLOW}Running Core migrations (stage 1, up to 20230110110655)...${NC}"
 php ./vendor/robmorgan/phinx/bin/phinx migrate -c "$CORE_PHINX" --target 20230110110655
 
-if [ "$USE_BO_COMMON_ENABLED" -eq 0 ]; then
-    echo -e "${YELLOW}Pre-cleanup before 20230901112005 on ${DBNAME_COMMON}...${NC}"
-    for tbl in rolf_tags rolf_risks; do
-        for idx in anr_id_3 anr_id_4; do
-            mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
-                -e "ALTER TABLE ${tbl} DROP INDEX ${idx};" 2>/dev/null || true
-        done
+# Pre-cleanup runs regardless of USE_BO_COMMON: each ALTER is an idempotent
+# "DROP IF EXISTS"-style call (errors swallowed), so it's a no-op against a
+# correctly-shaped (bootstrap-loaded or BO-owned) schema and only does work
+# when the migration chain has built up the duplicate indexes that block
+# 20230901112005. Migrating monarc_common is already unconditional, so
+# pre-cleaning it for that migration is consistent.
+echo -e "${YELLOW}Pre-cleanup before 20230901112005 on ${DBNAME_COMMON}...${NC}"
+for tbl in rolf_tags rolf_risks; do
+    for idx in anr_id_3 anr_id_4; do
         mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
-            -e "ALTER TABLE ${tbl} DROP FOREIGN KEY ${tbl}_ibfk_2;" 2>/dev/null || true
+            -e "ALTER TABLE ${tbl} DROP INDEX ${idx};" 2>/dev/null || true
     done
-fi
+    mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
+        -e "ALTER TABLE ${tbl} DROP FOREIGN KEY ${tbl}_ibfk_2;" 2>/dev/null || true
+done
 
 echo -e "${YELLOW}Running Core migrations (stage 2)...${NC}"
 php ./vendor/robmorgan/phinx/bin/phinx migrate -c "$CORE_PHINX"
