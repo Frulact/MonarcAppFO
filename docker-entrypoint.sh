@@ -104,6 +104,19 @@ return [
 EOF
 
 # ---------------------------------------------------------------------------
+# Optional: force a clean DB reset when the operator can't wipe the volume
+# directly (set RESET_DB=1 in Dokploy, redeploy once, then unset it).
+# ---------------------------------------------------------------------------
+
+if is_true "${RESET_DB:-0}"; then
+    echo -e "${RED}RESET_DB is set — dropping ${DBNAME_CLI} and ${DBNAME_COMMON}...${NC}"
+    mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" -e "DROP DATABASE IF EXISTS ${DBNAME_CLI};"
+    if [ "$USE_BO_COMMON_ENABLED" -eq 0 ]; then
+        mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" -e "DROP DATABASE IF EXISTS ${DBNAME_COMMON};"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Databases: create on first run, then ensure privileges every start so
 # user/password env changes are picked up.
 # ---------------------------------------------------------------------------
