@@ -108,6 +108,32 @@ RUN mkdir -p /var/www/html/monarc/data/cache \
 # Copy application source code
 COPY . /var/www/html/monarc
 
+# ---------------------------------------------------------------------------
+# Bake build-time artifacts into the image so container start is fast and
+# self-contained. Runtime entrypoint only handles DB setup and Apache.
+# ---------------------------------------------------------------------------
+
+# PHP dependencies
+RUN composer install --ignore-platform-req=php --no-interaction --no-dev -o
+
+# Module symlinks into vendor
+RUN mkdir -p module/Monarc \
+    && ln -sfn ./../../vendor/monarc/core module/Monarc/Core \
+    && ln -sfn ./../../vendor/monarc/frontoffice module/Monarc/FrontOffice
+
+# Frontend repositories
+RUN mkdir -p node_modules \
+    && git clone --config core.fileMode=false https://github.com/monarc-project/ng-client.git node_modules/ng_client \
+    && git clone --config core.fileMode=false https://github.com/monarc-project/ng-anr.git node_modules/ng_anr
+
+# Frontend dependencies & asset build (public/ symlinks, concat, translations)
+RUN cd node_modules/ng_client && npm ci
+RUN ./scripts/link_modules_resources.sh \
+    && ./scripts/compile_translations.sh
+
+# Ensure Apache user can read everything
+RUN chown -R www-data:www-data /var/www/html/monarc
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
