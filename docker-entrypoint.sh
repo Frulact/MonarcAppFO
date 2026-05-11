@@ -145,6 +145,23 @@ if [ "$USE_BO_COMMON_ENABLED" -eq 1 ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Pre-migration fixups: the legacy bootstrap dump (db-bootstrap/*.sql) was
+# committed with quirks that some later migrations don't tolerate. These
+# ALTERs are idempotent — if the offending object isn't present, the error
+# is swallowed and we move on.
+# ---------------------------------------------------------------------------
+
+if [ "$USE_BO_COMMON_ENABLED" -eq 0 ]; then
+    echo -e "${YELLOW}Pre-migration fixups on ${DBNAME_COMMON}...${NC}"
+    # Duplicate anr_id FK on rolf_tags / rolf_risks confuses migration
+    # 20230901112005 FixPositionsCleanupDb (MariaDB error 1072 at line 302).
+    mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
+        -e "ALTER TABLE rolf_tags DROP FOREIGN KEY rolf_tags_ibfk_2;" 2>/dev/null || true
+    mysql -h"${DBHOST}" -u"root" -p"${DBPASSWORD_ADMIN}" "${DBNAME_COMMON}" \
+        -e "ALTER TABLE rolf_risks DROP FOREIGN KEY rolf_risks_ibfk_2;" 2>/dev/null || true
+fi
+
+# ---------------------------------------------------------------------------
 # Migrations: Phinx is idempotent, so run every start to pick up new schema
 # shipped in this image.
 # ---------------------------------------------------------------------------
