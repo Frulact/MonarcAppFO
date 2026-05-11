@@ -817,9 +817,7 @@ CREATE TABLE `rolf_risks` (
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `anr_id` (`anr_id`,`code`),
-  KEY `anr_id_2` (`anr_id`),
-  CONSTRAINT `rolf_risks_ibfk_1` FOREIGN KEY (`anr_id`) REFERENCES `anrs` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `rolf_risks_ibfk_2` FOREIGN KEY (`anr_id`) REFERENCES `anrs` (`id`) ON DELETE CASCADE
+  CONSTRAINT `rolf_risks_ibfk_1` FOREIGN KEY (`anr_id`) REFERENCES `anrs` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=126 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -867,9 +865,7 @@ CREATE TABLE `rolf_tags` (
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `anr_id` (`anr_id`,`code`),
-  KEY `anr_id_2` (`anr_id`),
-  CONSTRAINT `rolf_tags_ibfk_1` FOREIGN KEY (`anr_id`) REFERENCES `anrs` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `rolf_tags_ibfk_2` FOREIGN KEY (`anr_id`) REFERENCES `anrs` (`id`) ON DELETE CASCADE
+  CONSTRAINT `rolf_tags_ibfk_1` FOREIGN KEY (`anr_id`) REFERENCES `anrs` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
