@@ -180,8 +180,16 @@ fi
 CORE_PHINX=./module/Monarc/Core/migrations/phinx.php
 FO_PHINX=./module/Monarc/FrontOffice/migrations/phinx.php
 
-echo -e "${YELLOW}Running Core migrations (stage 1, up to 20230110110655)...${NC}"
-php ./vendor/robmorgan/phinx/bin/phinx migrate -c "$CORE_PHINX" --target 20230110110655
+CORE_STAGE1_TARGET=20230110110655
+CORE_COMMON_HEAD=$(MYSQL_PWD="${DBPASSWORD_ADMIN}" mysql -h"${DBHOST}" -u"root" -N -B "${DBNAME_COMMON}" \
+    -e "SELECT IFNULL(MAX(version), 0) FROM phinxlog;" 2>/dev/null || echo 0)
+
+if [ "${CORE_COMMON_HEAD}" -lt "${CORE_STAGE1_TARGET}" ]; then
+    echo -e "${YELLOW}Running Core migrations (stage 1, up to ${CORE_STAGE1_TARGET})...${NC}"
+    php ./vendor/robmorgan/phinx/bin/phinx migrate -c "$CORE_PHINX" --target "${CORE_STAGE1_TARGET}"
+else
+    echo -e "${GREEN}Stage 1 target ${CORE_STAGE1_TARGET} already applied (head=${CORE_COMMON_HEAD}); skipping stage 1 migrate.${NC}"
+fi
 
 # Pre-cleanup runs regardless of USE_BO_COMMON: each ALTER is an idempotent
 # "DROP IF EXISTS"-style call (errors swallowed), so it's a no-op against a
