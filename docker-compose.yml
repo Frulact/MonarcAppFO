@@ -2,6 +2,7 @@ services:
   # MariaDB database for MONARC
   fodb:
     image: mariadb:10.11
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DBPASSWORD_ADMIN}
       MYSQL_DATABASE: ${DBNAME_COMMON}
@@ -26,6 +27,7 @@ services:
   # PostgreSQL database for stats service
   postgres:
     image: postgres:15
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${STATS_DB_USER}
       POSTGRES_PASSWORD: ${STATS_DB_PASSWORD}
@@ -45,6 +47,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.stats
+    restart: unless-stopped
     environment:
       STATS_HOST: ${STATS_HOST}
       STATS_PORT: ${STATS_PORT}
@@ -69,6 +72,7 @@ services:
       args:
         NODE_MAJOR: ${NODE_MAJOR:-16}
         XDEBUG_ENABLED: "0"
+    restart: unless-stopped
     environment:
       DBHOST: ${DBHOST:-fodb}
       DBNAME_COMMON: ${DBNAME_COMMON}
